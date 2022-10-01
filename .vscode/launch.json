@@ -1,0 +1,29 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "PowerShell: Launch Script",
+			"type": "PowerShell",
+			"request": "launch",
+			"script": "${file}",
+			"cwd": "${file}",
+			"args": []
+		},
+		{
+			"type": "PowerShell",
+			"request": "attach",
+			"name": "PowerShell Attach to Host Process",
+			"processId": "${PickPSHostProcess}",
+			"runspaceId": 1
+		},
+		{
+			"type": "PowerShell",
+			"request": "launch",
+			"name": "PowerShell Interactive Session",
+			"cwd": "${workspaceRoot}"
+		}
+	]
+}
