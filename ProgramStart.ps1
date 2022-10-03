@@ -1,231 +1,63 @@
 Get-ChildItem . | ForEach-Object {
-  if ($_.Extension -eq '.ps1') { return }
+  if ($_.Extension -ne '.psm1') { return }
   Import-Module $_.FullName -Force
 }
 
-class ProgramAttributes {
+class NetworkMapper {
 
-  [System.Object] CreateReconnectObjects([System.Object[]]$LocalComponents, [System.Object[]]$RecordComponents) {
-
-    [System.Object]$result = [pscustomobject] @{Recorded = @() ; UnRecorded = @() }
-    $loopCount = 0
-
-    $LocalComponents = $LocalComponents | Sort-Object -Property DisplayName
-    $RecordComponents = $RecordComponents | Sort-Object -Property DisplayName
-
-    $LocalComponentLength = $LocalComponents.Length
-
-    foreach ($_ in $RecordComponents) {
-      $outerRow = $_
-      $tmpRecorded = [pscustomobject]@{ Record = $_ ; Local = @() }
-      $tmpUnRecorded = @()
-
-      for ($_index = $loopCount; $_index -lt $LocalComponentLength; $_index++) {
-
-        $innerFirstRow = $LocalComponents[$_index]
-        $innerSecondRow = $LocalComponents[$_index + 1]
-
-        $isInnerFirstRowMatch = $innerFirstRow.DisplayName -eq $outerRow.Displayname -and $innerFirstRow.Type -eq $outerRow.Type
-
-        $isInnerSecondRowMatch = $innerSecondRow.DisplayName -eq $outerRow.Displayname -and $innerSecondRow.Type -eq $outerRow.Type
-
-
-        if ($isInnerFirstRowMatch) {
-          $tmpRecorded.Local += $innerFirstRow
-        }
-        else {
-
-          if (-not $isInnerSecondRowMatch) {
-            $loopCount = $_index
-            break
-          }
-
-          $tmpUnRecorded += $innerFirstRow
-          $_index++
-          $loopCount = $_index
-
-        }
-
-        $loopCount++
-        if (-not $isInnerFirstRowMatch -and $isInnerSecondRowMatch) {
-          $tmpRecorded.Local += $innerSecondRow
-          continue
-        }
-
-        break
-      }
-
-      $result.Recorded += $tmpRecorded
-      $result.UnRecorded += $tmpUnRecorded
-    }
-
-    if ((-not $RecordComponents.Count -and $LocalComponents.Count -gt 0) -or ($loopCount -lt $LocalComponents.Count)) {
-      for ($_index = $loopCount; $_index -lt $LocalComponents.Count; $_index++) {
-        $result.UnRecorded += $LocalComponents[$_index]
-      }
-    }
-
-    return $result
-  }
-
-  [System.Collections.ArrayList] ToArray([System.Object[]]$Objects) {
-    $toArr = @()
-
-    $Objects.ForEach( {
-        $toArr += $_.DisplayName
-      }
-    )
-
-    return $toArr
-  }
-
-  [System.Void] Status([System.String]$Status, [System.String]$Type) {
-    $time = 0
-    if ($Type -eq 'Fast') {
-      $time = 1
-    }
-    elseif ($Type -eq 'Normal') {
-      $time = 2
-    }
-    elseif ($Type -eq 'Slow') {
-      $time = 3
-    }
-    Write-Host $Status
-    Start-Sleep -Seconds $time
-  }
-
-  [int] MenuOptions ([System.Object]$Objects, [System.String]$Title, [System.String]$BackText) {
-
-    # Write-Host $Title
-    $display += $Title
-    $display += $this._MenuList($Objects, $BackText)
-
-    return $this._ChooseMenu($display, $Objects.Count)
-  }
-
-  [int] hidden _ChooseMenu ([System.String]$Menu, [System.Int16]$ArrayLength) {
-    $select = -1
-    $isInvalid = $false
-
-    do {
-      Clear-Host
-
-      Write-Host $Menu
-
-      if ($isInvalid) {
-        Write-Warning "Invalid selection. Please select again.`n"
-        Start-Sleep -Seconds 1
-      }
-
-      $select = Read-Host -Prompt "Select"
-
-      $isInvalid = if ((0..$ArrayLength -notcontains $select) -or (-not $select)) { $true }else { $false }
-
-      if ($isInvalid) { continue }
-
-      if ($select -eq 0) {
-        $select = -1
-      }
-      else {
-        $select = $select - 1
-      }
-
-    } while ( $isInvalid)
-
-    return $select
-  }
-
-  [System.String] hidden _MenuList ([System.Object]$Objects, [System.String]$BackText) {
-
-    $display = "`n[ 0 ] $BackText`n"
-
-    if (-not $Objects.Count) {
-      Throw "There is no data available for display."
-    }
-
-    $index = 1
-    foreach ($object in $Objects) {
-
-      $display += "[ $index ] $object`n"
-
-      $index++
-    }
-
-    return $display
-  }
-
-  [System.String] InputMapName() {
-
-    $Name = ''
-    $isNotValid = $false
-
-    do {
-      $Name = (Read-Host -Prompt "Map name (enter number 0 to exit)" )
-
-      if ($Name -eq 0) {
-        $this.Status("`nAn attempt to connect is cancelled.", "Normal")
-        return 'Cancelled'
-      }
-
-      $Name = $Name.ToUpper()
-
-      $isNotValid = (-not $Name -or -not($Name -match '^[a-zA-Z]{1}') -or -not ($Name.Length -eq 1))
-
-      if ($isNotValid) {
-        $this.Status("Invalid name. Please try again.", "Normal")
-      }
-
-    } while ( $isNotValid )
-
-    return $Name
-  }
-}
-
-class NetworkMapper : ProgramAttributes {
+  $Attributes
 
   $MENU
   $UserProfile
   $NetworkComponent
   $LocalComponent
-  $Job
 
   NetworkMapper() {
+    Clear-Host 
 
     $this.MENU = [ordered] @{
-      "Reconnect"  = $this.Reconnect
-      "Connect"    = $this.Connect
-      "Disconnect" = $this.Disconnect
-      "Printers"   = $this.Printers
-      "Refresh"    = $this.Refresh
+      "Reconnect"    = $this.Reconnect
+      "Connect"      = $this.Connect
+      "Disconnect"   = $this.Disconnect
+      "Printers"     = $this.Printers
+      "Scan Network" = $this.ScanNetwork
+      
     }
 
+    $this.Attributes = Invoke-ProgramAttributes
+
+    $this.Attributes.Status("Loading system requirements ... ", 'Fast')
+
     $this.UserProfile = Invoke-UserProfile
-    $this.NetworkComponent = Invoke-NetworkComponents
     $this.LocalComponent = Invoke-LocalComponents
+    $this.NetworkComponent = Invoke-NetworkComponents
 
-    $this.Job = Invoke-Jobs `
-      -SetterHost $this.NetworkComponent.SetComputerHost `
-      -SetterShared $this.NetworkComponent.SetSharedComponent `
-      -SetterLocal $this.LocalComponent.SetLocalComponent
-  }
-
-  [System.Object[]] Init () {
-    return $script:_Objects
+    Clear-Host
+    $this.Attributes.Status("Loaded succesfully", "normal")
   }
 
   [System.Void] Load() {
     $continue = $true
 
+    # check cache
+    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
+
+    if ($isCacheExpired) {
+      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
+
+      $this.ScanNetwork()
+
+    }
+
     do {
 
       Clear-Host
-
 
       $title = "`tPROGRAM MENU`n"
 
       $keys = $this.MENU.Keys -as [array]
 
-      $selected = ($this.MenuOptions($Keys, $title, 'Exit Program'))
+      $selected = ($this.Attributes.MenuOptions($Keys, $title, 'Exit Program'))
 
       Clear-Host
 
@@ -252,11 +84,11 @@ class NetworkMapper : ProgramAttributes {
       UnRecorded = [System.Collections.ArrayList]::new()
     }
 
-    $ComponentList = $this.CreateReconnectObjects($Locals, $Users)
+    $ComponentList = $this.Attributes.CreateReconnectObjects($Locals, $Users)
     $ReconnectingResult = [System.Collections.ArrayList]::new()
 
     if (-not $ComponentList.Recorded.Count -and -not $ComponentList.UnRecorded.Count) {
-      $this.Status("No components are connected. Established a connection first.", "Normal")
+      $this.Attributes.Status("No components are connected. Established a connection first.", "Normal")
 
       return
     }
@@ -292,11 +124,11 @@ class NetworkMapper : ProgramAttributes {
       # Remove excess duplicates that are not active
       if (-not $Component.Local) {
 
-        $this.Status("Adding $Name connection ...", "Fast")
+        $this.Attributes.Status("Adding $Name connection ...", "Fast")
         $result = $this.NetworkComponent.Connect($Record)
 
         if ($result.Status -eq 'Success') {
-          $this.Status("$Name connection added.", "Fast")
+          $this.Attributes.Status("$Name connection added.", "Fast")
           $profileList += $Record
 
           if ($Record.AdditionalInfo -eq 'Default') {
@@ -312,14 +144,14 @@ class NetworkMapper : ProgramAttributes {
           continue
         }
         else {
-          $this.Status($result.Info.Message, "Fast")
+          $this.Attributes.Status($result.Info.Message, "Fast")
         }
       }
       else {
 
         $duplicateFound = $false
 
-        $this.Status("Checking $Name", "Fast")
+        $this.Attributes.Status("Checking $Name", "Fast")
         foreach ($Local in $Component.Local) {
           if ($Record.SourcePath -eq $Local.SourcePath) {
             if ($Local.Type -eq 'print') { if ($Local.AdditionalInfo -eq 'Default') { $Record.AdditionalInfo = 'Default' } }
@@ -330,10 +162,10 @@ class NetworkMapper : ProgramAttributes {
         }
 
         if ($duplicateFound) {
-          $this.Status("Duplicate remove.", "Fast")
+          $this.Attributes.Status("Duplicate remove.", "Fast")
         }
         else {
-          $this.Status("No duplicates are found.", "Fast")
+          $this.Attributes.Status("No duplicates are found.", "Fast")
         }
       }
 
@@ -347,11 +179,11 @@ class NetworkMapper : ProgramAttributes {
             -Message "Active connection"
         }
 
-        $this.Status("Skipping $Name since connection is still active.", "Fast")
+        $this.Attributes.Status("Skipping $Name since connection is still active.", "Fast")
         continue
       }
 
-      $this.Status("Attempting to reconnect $Name ...", "Fast")
+      $this.Attributes.Status("Attempting to reconnect $Name ...", "Fast")
 
       $this.LocalComponent.Remove($Record)
 
@@ -361,11 +193,11 @@ class NetworkMapper : ProgramAttributes {
       $Result = $this.NetworkComponent.Connect($Record)
 
       if ($Result.Status -eq 'Error') {
-        $this.Status($Result.Info.Message)
+        $this.Attributes.Status($Result.Info.Message)
       }
       else {
         $profileList += $Record
-        $this.Status("$Name is sucessfully reconnected.", "Fast")
+        $this.Attributes.Status("$Name is sucessfully reconnected.", "Fast")
       }
 
       $ReconnectingResult += [PSCustomObject]@{
@@ -379,7 +211,7 @@ class NetworkMapper : ProgramAttributes {
 
       $Name = $UnRecorded.DisplayName
 
-      $this.Status("Adding $Name to record.", "Fast")
+      $this.Attributes.Status("Adding $Name to record.", "Fast")
 
       $isActive = $false
 
@@ -416,7 +248,7 @@ class NetworkMapper : ProgramAttributes {
           -Message "Added"
       }
 
-      $this.Status("$Name successfully added.", "Fast")
+      $this.Attributes.Status("$Name successfully added.", "Fast")
     }
 
     # write to user profile
@@ -443,18 +275,6 @@ class NetworkMapper : ProgramAttributes {
 
   [System.Void] hidden Connect() {
 
-    # check first if jobs are complete - 
-    # required jobs, host and network scan
-
-    if ($this.Job.Status('host') -eq 'on-progress') {
-      $this.Status("Searching for available host in the network. Please wait.", 'normal')
-      return
-    }
-    elseif ($this.Job.Status('shared') -eq 'on-progress') {
-      $this.Status("Scanning for components are still on progress. Please wait.", 'Normal' )
-      return
-    }
-
     do {
 
       $title = "`tCONNECT NETWORK CONNECTION`n"
@@ -475,7 +295,7 @@ class NetworkMapper : ProgramAttributes {
 
         if ($shared[0].Status -eq 'Error' ) {
 
-          $this.Status($shared[0].Info.Message, "Normal")
+          $this.Attributes.Status($shared[0].Info.Message, "Normal")
 
           if ($shared[0].Info.Code -eq 1) {
             $reScan = $true
@@ -492,7 +312,7 @@ class NetworkMapper : ProgramAttributes {
 
       }while ($reScan)
 
-      $selected = $this.MenuOptions($this.ToArray($shared), $title, 'Back to Menu')
+      $selected = $this.Attributes.MenuOptions($this.Attributes.ToArray($shared), $title, 'Back to Menu')
 
       # back to menu
       if ($selected -eq -1) { break }
@@ -505,7 +325,7 @@ class NetworkMapper : ProgramAttributes {
       # for selecting new connection for disk type component, prompt for a drive name
       if ($selected.Type -eq 'Disk') {
 
-        $MapName = $this.InputMapName()
+        $MapName = $this.Attributes.InputMapName()
 
         if ($MapName -eq 'Cancelled') { continue } # go back to selecting components
 
@@ -543,7 +363,7 @@ class NetworkMapper : ProgramAttributes {
             $isInvalid = (-not $override -or $override -notmatch "^[a-zA-Z]{1}$" -or (@('Y', 'N') -notcontains $override))
 
             if ($isInValid ) {
-              $this.Status("Invalid selection. Try again.", "Normal")
+              $this.Attributes.Status("Invalid selection. Try again.", "Normal")
               continue
             }
 
@@ -569,7 +389,7 @@ class NetworkMapper : ProgramAttributes {
 
       Clear-Host
 
-      $this.Status($ConnectionResult.Info.Message, "Normal")
+      $this.Attributes.Status($ConnectionResult.Info.Message, "Normal")
 
     }while ($true)
   }
@@ -583,11 +403,11 @@ class NetworkMapper : ProgramAttributes {
       $components = $this.UserProfile.Get('all')
 
       if (-not $components.count) {
-        $this.Status("No components ared connected. Please established a connection first.", "Normal")
+        $this.Attributes.Status("No components ared connected. Please established a connection first.", "Normal")
         break
       }
 
-      $selected = $this.MenuOptions($this.ToArray($components), $title, 'Back to Menu')
+      $selected = $this.Attributes.MenuOptions($this.Attributes.ToArray($components), $title, 'Back to Menu')
 
       # back to menu
       if (($selected -eq -1)) {
@@ -606,11 +426,11 @@ class NetworkMapper : ProgramAttributes {
           # error if map name is not found
           $this.UserProfile.Remove($selected)
         }
-        $this.Status($DisconnectionResult.Info.Message, "Normal")
+        $this.Attributes.Status($DisconnectionResult.Info.Message, "Normal")
       }
       elseif ($DisconnectionResult.Status -eq 'Success') {
         $this.UserProfile.Remove($selected)
-        $this.Status("Disconnected successfully.", "Normal")
+        $this.Attributes.Status("Disconnected successfully.", "Normal")
       }
 
     }while ($true)
@@ -624,7 +444,7 @@ class NetworkMapper : ProgramAttributes {
 
       $components = $this.LocalComponent.Get('print')
 
-      $selected = $this.MenuOptions($this.ToArray($components), $title, 'Back to Menu')
+      $selected = $this.Attributes.MenuOptions($this.Attributes.ToArray($components), $title, 'Back to Menu')
 
       # back to menu
       if ($selected -eq -1) {
@@ -639,7 +459,7 @@ class NetworkMapper : ProgramAttributes {
       $printerResult = $this.LocalComponent.SetDefaultPrinter($selected.SourcePath)
 
       if ($printerResult.Status -eq 'Error') {
-        $this.Status("An error occurs in setting $($selected.DisplayName) to default. Please check printer.", "Normal")
+        $this.Attributes.Status("An error occurs in setting $($selected.DisplayName) to default. Please check printer.", "Normal")
 
         continue
       }
@@ -657,24 +477,34 @@ class NetworkMapper : ProgramAttributes {
 
       $this.UserProfile.RecordRaw($printerList, 'print')
 
-      $this.Status("Printer set successfully.", "Normal")
+      $this.Attributes.Status("Printer set successfully.", "Normal")
 
 
     }while ($true)
   }
 
-  [System.Void] hidden Refresh() {
+  [System.Void] hidden ScanNetwork() {
     Clear-Host
-    $this.Status("Refreshing all data...", "Normal")
 
-    $this.UserProfile.Init()
-    $this.NetworkComponent.Init()
-    $this.LocalComponent.Init()
+    $this.Attributes.Status("Scanning network...", "fast")
+
+    $this.NetworkComponent.PerformScan()
+
+    $Result = @{}
+
+    do {
+
+      $Result = $this.NetworkComponent.ScanStatus()
+
+      if (@('success', 'error') -contains $Result.Status) { break }
+
+      Start-Sleep -Seconds 1
+
+    }while ($true)
 
     Clear-Host
-    $this.Status("Data refresh.", "Normal")
+    $this.Attributes.Status($Result.Message, 'normal')
   }
-
 }
 
 $Program = [NetworkMapper]::new()
