@@ -21,7 +21,10 @@ class LocalComponents {
       -MessageData $this `
       -Action {
         
-      $_LocalComponents = Receive-Job -Id $sender.Id -Keep 
+      $_LocalComponents = Receive-Job -Id $sender.Id -Keep |
+      Select-Object DisplayName, Type, ConnectionOwner, SourcePath, SourceIPAddress, AdditionalInfo |
+      Sort-Object -Property DisplayName
+
       $Event.MessageData.Set.Invoke(@(, $_LocalComponents))
 
       Remove-Job -Id $sender.Id # remove Job
