@@ -193,61 +193,6 @@ class NetworkComponents : Cache {
 
   [System.Object[]] Get([System.String]$Type) {
 
-    # if (-not $this._Components.Count) {
-
-    #   if (-not $this._ComputerList.Count) {
-    #     $computerListResult = $this._GetComputerList()
-
-    #     if ($computerListResult[0].Status -eq 'Error') { return $computerListResult }
-
-    #     if (-not $computerListResult.Count) {
-    #       return Invoke-OperationStatus `
-    #         -Status Error `
-    #         -Message "There are no components found in the network." `
-    #         -Code -1
-    #     }
-
-    #     $this._ComputerList = $computerListResult
-
-    #     Remove-Variable computerListResult -ErrorAction SilentlyContinue
-    #   }
-
-    #   if (-not $this._ComputerList.Count) {
-    #     return Invoke-OperationStatus `
-    #       -Status Error `
-    #       -Message "There are no computers that discovered in the network. Please check network connection first and try again." `
-    #       -Code -1
-    #   }
-
-    #   if (-not $this._IsScanned) {
-    #     $this._IsScanned = $true
-    #     $this._StartSharesScan($this._ComputerList)
-    #     return Invoke-OperationStatus `
-    #       -Status Error `
-    #       -Message "Starting to scan network for shared components. Please wait." `
-    #       -Code 1
-    #   }
-
-    #   if ($this._ScanSharesID) {
-    #     # scanning
-    #     $sharedResult = $this._GetSharedList()
-
-    #     if ($sharedResult[0].Status -eq 'Error') { return $sharedResult }
-
-    #     if (-not $sharedResult.Count) {
-    #       return Invoke-OperationStatus `
-    #         -Status Error `
-    #         -Message "There are no components found in the network." `
-    #         -Code -1
-    #     }
-
-    #     $this._Components = $sharedResult | Select-Object -Property DisplayName, Type, ConnectionOwner, SourcePath, SourceIPAddress, AdditionalInfo | Sort-Object -Property DisplayName
-
-    #     Remove-Variable sharedResult -ErrorAction SilentlyContinue
-
-    #   }
-    # }
-
     # check if job is complete
     [System.Object[]] $ReturnObject = @()
 
