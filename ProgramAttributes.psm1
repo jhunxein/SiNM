@@ -1,4 +1,3 @@
-
 class ProgramAttributes {
 
   [System.Object] CreateReconnectObjects([System.Object[]]$LocalComponents, [System.Object[]]$RecordComponents) {

@@ -1,5 +1,5 @@
 Get-ChildItem . | ForEach-Object {
-  if ($_.Extension -eq '.ps1') { return }
+  if ($_.Extension -ne '.psm1') { return }
   Import-Module $_.FullName -Force
 }
 
@@ -11,40 +11,47 @@ class NetworkMapper {
   $UserProfile
   $NetworkComponent
   $LocalComponent
-  $Job
 
   NetworkMapper() {
+    Clear-Host 
 
     $this.MENU = [ordered] @{
-      "Reconnect"  = $this.Reconnect
-      "Connect"    = $this.Connect
-      "Disconnect" = $this.Disconnect
-      "Printers"   = $this.Printers
-      "Refresh"    = $this.Refresh
+      "Reconnect"    = $this.Reconnect
+      "Connect"      = $this.Connect
+      "Disconnect"   = $this.Disconnect
+      "Printers"     = $this.Printers
+      "Scan Network" = $this.ScanNetwork
+      
     }
 
     $this.Attributes = Invoke-ProgramAttributes
+
+    $this.Attributes.Status("Loading system requirements ... ", 'Fast')
+
     $this.UserProfile = Invoke-UserProfile
-    $this.NetworkComponent = Invoke-NetworkComponents
     $this.LocalComponent = Invoke-LocalComponents
+    $this.NetworkComponent = Invoke-NetworkComponents
 
-    $this.Job = Invoke-Jobs `
-      -SetterHost $this.NetworkComponent.SetComputerHost `
-      -SetterShared $this.NetworkComponent.SetSharedComponent `
-      -SetterLocal $this.LocalComponent.SetLocalComponent
-  }
-
-  [System.Object[]] Init () {
-    return $script:_Objects
+    Clear-Host
+    $this.Attributes.Status("Loaded succesfully", "normal")
   }
 
   [System.Void] Load() {
     $continue = $true
 
+    # check cache
+    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
+
+    if ($isCacheExpired) {
+      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
+
+      $this.ScanNetwork()
+
+    }
+
     do {
 
       Clear-Host
-
 
       $title = "`tPROGRAM MENU`n"
 
@@ -77,7 +84,7 @@ class NetworkMapper {
       UnRecorded = [System.Collections.ArrayList]::new()
     }
 
-    $ComponentList = $this.CreateReconnectObjects($Locals, $Users)
+    $ComponentList = $this.Attributes.CreateReconnectObjects($Locals, $Users)
     $ReconnectingResult = [System.Collections.ArrayList]::new()
 
     if (-not $ComponentList.Recorded.Count -and -not $ComponentList.UnRecorded.Count) {
@@ -267,18 +274,6 @@ class NetworkMapper {
   }
 
   [System.Void] hidden Connect() {
-
-    # check first if jobs are complete - 
-    # required jobs, host and network scan
-
-    if ($this.Job.Status('host') -eq 'on-progress') {
-      $this.Attributes.Status("Searching for available host in the network. Please wait.", 'normal')
-      return
-    }
-    elseif ($this.Job.Status('shared') -eq 'on-progress') {
-      $this.Attributes.Status("Scanning for components are still on progress. Please wait.", 'Normal' )
-      return
-    }
 
     do {
 
@@ -488,18 +483,28 @@ class NetworkMapper {
     }while ($true)
   }
 
-  [System.Void] hidden Refresh() {
+  [System.Void] hidden ScanNetwork() {
     Clear-Host
-    $this.Attributes.Status("Refreshing all data...", "Normal")
 
-    $this.UserProfile.Init()
-    $this.NetworkComponent.Init()
-    $this.LocalComponent.Init()
+    $this.Attributes.Status("Scanning network...", "fast")
+
+    $this.NetworkComponent.PerformScan()
+
+    $Result = @{}
+
+    do {
+
+      $Result = $this.NetworkComponent.ScanStatus()
+
+      if (@('success', 'error') -contains $Result.Status) { break }
+
+      Start-Sleep -Seconds 1
+
+    }while ($true)
 
     Clear-Host
-    $this.Attributes.Status("Data refresh.", "Normal")
+    $this.Attributes.Status($Result.Message, 'normal')
   }
-
 }
 
 $Program = [NetworkMapper]::new()

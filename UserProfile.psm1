@@ -11,7 +11,6 @@ class UserProfile {
   [System.Object[]] hidden _GetUserProfile() {
 
     [System.Object]$userProfile = @() 
-    Test-Path $this._FullPath -Verbose 
 
     if (-not (Test-Path $this._FullPath)) {
       # if file is not created, create a new one

@@ -1,8 +1,40 @@
 Import-Module .\ProcessToObject.psm1
 
 class LocalComponents {
+  hidden $_Components
 
-  [System.Object[]] hidden $_Components
+  hidden $_Event
+  hidden $_Job
+  hidden $_Status
+
+  LocalComponents() {
+    $this._InvokeScan()
+  }
+
+  [System.Void] hidden _InvokeScan () {
+    $this._Job = Start-Job -Name LocalScan `
+      -FilePath .\LocalComponentJob.ps1 `
+      -InitializationScript { Import-Module .\ProcessToObject.psm1 }
+
+    $this._Event = Register-ObjectEvent `
+      $this._Job StateChanged `
+      -MessageData $this `
+      -Action {
+        
+      $_LocalComponents = Receive-Job -Id $sender.Id -Keep 
+      $Event.MessageData.Set.Invoke(@(, $_LocalComponents))
+
+      Remove-Job -Id $sender.Id # remove Job
+      Get-EventSubscriber -SubscriptionId $eventSubscriber.SubscriptionId | Unregister-Event -Force # remove event
+    }
+  }
+
+  [System.Void] hidden Set([System.Object[]]$Objects) {
+    $this._Components = $Objects
+
+    $this._Job = $null
+    $this._Event = $null
+  }
 
   [System.Object[]] Get([System.String]$Type) {
 
@@ -124,8 +156,6 @@ class LocalComponents {
 
     return $result
   }
-
-
 }
 
 function Invoke-LocalComponents {
