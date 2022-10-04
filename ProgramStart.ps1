@@ -279,38 +279,12 @@ class NetworkMapper {
 
       $title = "`tCONNECT NETWORK CONNECTION`n"
 
-      $reScan = $false
+      $shared = $this.NetworkComponent.Get('all')
 
-      <#
-        Getting the information of the network takes time since it
-        scans the source availability in the network and there
-        shared components so this is called and process in the background
-
-        Needs improvement!
-      #>
-
-      do {
-
-        $shared = $this.NetworkComponent.Get('all')
-
-        if ($shared[0].Status -eq 'Error' ) {
-
-          $this.Attributes.Status($shared[0].Info.Message, "Normal")
-
-          if ($shared[0].Info.Code -eq 1) {
-            $reScan = $true
-          }
-          elseif ( @(-1, 0) -contains $shared[0].Info.Code) {
-            break # return to menu
-          }
-
-          Clear-Host
-        }
-        else {
-          $reScan = $false
-        }
-
-      }while ($reScan)
+      if (-not $shared -or -not $shared.Count) {
+        $this.Attributes.Status("No shared component available. Try to scan the network and try again.")
+        return
+      }
 
       $selected = $this.Attributes.MenuOptions($this.Attributes.ToArray($shared), $title, 'Back to Menu')
 
@@ -376,7 +350,7 @@ class NetworkMapper {
           elseif ($override -eq 'Y') {
             $this.LocalComponent.Remove($selected)
             $this.UserProfile.Remove($selected)
-            break
+            continue
           }
         }
 
@@ -502,8 +476,23 @@ class NetworkMapper {
 
     }while ($true)
 
+    $sharedComponents = $this.NetworkComponent.Get('all')
+
     Clear-Host
     $this.Attributes.Status($Result.Message, 'normal')
+
+    Clear-Host
+    # display shared components
+    if ($sharedComponents.Count) {
+      $display = "SCANNED SHARED COMPONENTS`n"
+
+      foreach ($shared in $sharedComponents) {
+        $display += "$($shared.DisplayName)`n"
+      }
+
+      $this.Attributes.Status($display, 'normal')
+    }
+
   }
 }
 
