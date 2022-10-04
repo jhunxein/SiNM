@@ -243,7 +243,7 @@ class NetworkComponents : Cache {
         -PSProvider FileSystem `
         -Scope Global `
         -ErrorAction Stop `
-        -Persist | Out-Null
+        -Persist 
 
       return Invoke-OperationStatus `
         -Status Success `
