@@ -46,6 +46,7 @@ class NetworkMapper {
       $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
 
       $this.ScanNetwork()
+      $this.Reconnect()
 
     }
 
