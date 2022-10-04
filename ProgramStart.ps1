@@ -350,7 +350,7 @@ class NetworkMapper {
           elseif ($override -eq 'Y') {
             $this.LocalComponent.Remove($selected)
             $this.UserProfile.Remove($selected)
-            break
+            continue
           }
         }
 
