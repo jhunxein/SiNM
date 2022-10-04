@@ -1,6 +1,6 @@
 function GetPrinters {
   $printerList = Get-CimInstance -Class Win32_Printer | 
-  Where-Object { $_.Shared } | 
+  Where-Object { $_.Shared -and $_.Network } | 
   Select-Object -Property SystemName, Default, ShareName
 
   return ToTemplate -Data $printerList -Type "Print"
