@@ -476,8 +476,23 @@ class NetworkMapper {
 
     }while ($true)
 
+    $sharedComponents = $this.NetworkComponent.Get('all')
+
     Clear-Host
     $this.Attributes.Status($Result.Message, 'normal')
+
+    Clear-Host
+    # display shared components
+    if ($sharedComponents.Count) {
+      $display = "SCANNED SHARED COMPONENTS`n"
+
+      foreach ($shared in $sharedComponents) {
+        $display += "$($shared.DisplayName)`n"
+      }
+
+      $this.Attributes.Status($display, 'normal')
+    }
+
   }
 }
 
