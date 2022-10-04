@@ -183,14 +183,6 @@ class NetworkComponents : Cache {
     }
   }
 
-  [System.Void] SetComputerHost([System.Object[]]$ComputerHost) {
-    $this._ComputerList = $ComputerHost
-  }
-
-  [System.Void] SetSharedComponent([System.Object[]]$Components) {
-    $this._Components = $Components
-  }
-
   [System.Object[]] Get([System.String]$Type) {
 
     # check if job is complete
