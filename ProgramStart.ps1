@@ -37,18 +37,6 @@ class NetworkMapper {
   }
 
   [System.Void] Load() {
-    $continue = $true
-
-    # check cache
-    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
-
-    if ($isCacheExpired) {
-      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
-
-      $this.ScanNetwork()
-      $this.Reconnect()
-
-    }
 
     do {
 
@@ -64,12 +52,12 @@ class NetworkMapper {
 
       if ($selected -eq -1) {
         Write-Host "Program Exit."
-        Exit
+        break
       }
 
       $this.MENU[$keys[$selected]].Invoke()
 
-    }while ($continue)
+    }while ($true)
   }
 
   [System.Void] hidden Reconnect() {
@@ -275,6 +263,17 @@ class NetworkMapper {
   }
 
   [System.Void] hidden Connect() {
+
+    # check cache
+    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
+
+    if ($isCacheExpired) {
+      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
+
+      $this.ScanNetwork()
+      $this.Reconnect()
+
+    }
 
     do {
 
