@@ -4,7 +4,7 @@ class LocalComponents {
   hidden $_Components
 
   hidden $_Event
-  hidden $_Job
+  [System.Management.Automation.Job] hidden $_Job
   hidden $_Status
 
   LocalComponents() {
@@ -12,6 +12,9 @@ class LocalComponents {
   }
 
   [System.Void] hidden _InvokeScan () {
+
+    $this._Status = 'on-progress'
+
     $this._Job = Start-Job -Name LocalScan `
       -FilePath .\LocalComponentJob.ps1 `
       -InitializationScript { Import-Module .\ProcessToObject.psm1 }
@@ -20,15 +23,24 @@ class LocalComponents {
       $this._Job StateChanged `
       -MessageData $this `
       -Action {
+
+      try {
+
+        $Event.MessageData._Status = 'complete'
         
-      $_LocalComponents = Receive-Job -Id $sender.Id -Keep |
-      Select-Object DisplayName, Type, ConnectionOwner, SourcePath, SourceIPAddress, AdditionalInfo |
-      Sort-Object -Property DisplayName
+        $_LocalComponents = Receive-Job -Id $sender.Id -Keep |
+        Select-Object DisplayName, Type, ConnectionOwner, SourcePath, SourceIPAddress, AdditionalInfo |
+        Sort-Object -Property DisplayName
 
-      $Event.MessageData.Set.Invoke(@(, $_LocalComponents))
-
-      Remove-Job -Id $sender.Id # remove Job
-      Get-EventSubscriber -SubscriptionId $eventSubscriber.SubscriptionId | Unregister-Event -Force # remove event
+        $Event.MessageData.Set.Invoke(@(, $_LocalComponents))
+      }
+      catch {
+        $Event.MessageData._Status = 'error'
+      }
+      finally {
+        Remove-Job -Id $sender.Id # remove Job
+        Get-EventSubscriber -SubscriptionId $eventSubscriber.SubscriptionId | Unregister-Event -Force # remove event
+      }
     }
   }
 
@@ -43,15 +55,27 @@ class LocalComponents {
 
     [System.Object[]] $ReturnObject = @()
 
-    if ($Type -eq 'all') {
-      $ReturnObject = $this._Components
-    }
-    elseif ($Type -eq 'Print') {
-      $ReturnObject = $this._Components | Where-Object { $_.Type -eq 'Print' }
-    }
-    elseif ($Type -eq 'Disk') {
-      $ReturnObject = $this._Components | Where-Object { $_.Type -eq 'Disk' }
-    }
+    do {
+
+      # check job status
+      if ($this._Status -eq 'on-progress') {
+        Start-Sleep -Milliseconds 300
+        continue
+      }
+
+      if ($Type -eq 'all') {
+        $ReturnObject = $this._Components
+      }
+      elseif ($Type -eq 'Print') {
+        $ReturnObject = $this._Components | Where-Object { $_.Type -eq 'Print' }
+      }
+      elseif ($Type -eq 'Disk') {
+        $ReturnObject = $this._Components | Where-Object { $_.Type -eq 'Disk' }
+      }
+
+      break
+
+    } while ($true)
 
     return $ReturnObject | Sort-Object -Property DisplayName
   }
