@@ -37,7 +37,6 @@ class NetworkMapper {
   }
 
   [System.Void] Load() {
-    $continue = $true
 
     do {
 
@@ -53,12 +52,12 @@ class NetworkMapper {
 
       if ($selected -eq -1) {
         Write-Host "Program Exit."
-        Exit
+        break
       }
 
       $this.MENU[$keys[$selected]].Invoke()
 
-    }while ($continue)
+    }while ($true)
   }
 
   [System.Void] hidden Reconnect() {
