@@ -39,17 +39,6 @@ class NetworkMapper {
   [System.Void] Load() {
     $continue = $true
 
-    # check cache
-    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
-
-    if ($isCacheExpired) {
-      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
-
-      $this.ScanNetwork()
-      $this.Reconnect()
-
-    }
-
     do {
 
       Clear-Host
@@ -275,6 +264,17 @@ class NetworkMapper {
   }
 
   [System.Void] hidden Connect() {
+
+    # check cache
+    $isCacheExpired = $this.NetworkComponent.IsCacheExpired()
+
+    if ($isCacheExpired) {
+      $this.Attributes.Status("Refreshing connection record. This may take a while. Please wait ...", 'fast')
+
+      $this.ScanNetwork()
+      $this.Reconnect()
+
+    }
 
     do {
 
